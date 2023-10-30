@@ -35,7 +35,7 @@ import TcsControl_python3 as TCS
     Current design is that each time, the target temperature will appear on different area on the thermode.
     Graphical user interface allows to set the correct COM port of the device, 
     session information, target temperature and the baseline temperature.
-    During the session, a marker will be send to the serial port of X device.
+    During the session, a marker will be send to the serial port of Neurospec: MMBT-S Trigger Interface Box.
     The value of the marker will match the current area on the thermode, where the target temperature is applied.
 '''
 
@@ -63,12 +63,17 @@ TOTAL_DURATION_SEC = 300
 LOG_FOLDER = "_HEAT_LOGS"
 SUBJECT_ID = "00"
 SESSION = "00"
-DURATIONS       = [TIME2APPLY_SEC]*5     # stimulation durations in s for the 5 zones
+# DURATIONS       = [TIME2APPLY_SEC]*5     # stimulation durations in s for the 5 zones
 RAMP_SPEED      = [300.0]*5              # ramp up speed in °C/s for the 5 zones
 RETURN_SPEED    = [300.0]*5              # ramp down speed in °C/s for the 5 zones
 AREAS = [1,4,2,5,3]
 BEGIN_MARKER = 11
 END_MARKER = 22
+
+MAX_TEMP = 60
+MIN_TEMP = 15
+MIN_TIME2APPLY = 1
+MAX_TIME2APPLY = 10
 
 
 ########################################
@@ -106,6 +111,7 @@ class MySettingsWidget(QMainWindow):
                                     "session": SESSION,
                                     "target_temp":TARGET_TEMP,
                                     "baseline_temp":BASELINE_TEMP,
+                                    'time2apply':TIME2APPLY_SEC,
                                     "duration":TOTAL_DURATION_SEC,
                                     "com_acqknoledge":COM_ACQKNOLEDGE,
                                     "com_qst":COM_QST
@@ -127,6 +133,9 @@ class MySettingsWidget(QMainWindow):
         self.temperature_base_label = QLabel("Baseline temperature:")
         self.temperature_base_text = QLineEdit(str(self.task_params_dict["baseline_temp"]))
         self.main_layout.addRow(self.temperature_base_label,self.temperature_base_text)
+        self.time2apply_label = QLabel("Temperature hold (sec):")
+        self.time2apply_text = QLineEdit(str(self.task_params_dict["time2apply"]))
+        self.main_layout.addRow(self.time2apply_label,self.time2apply_text)
         self.duration_label = QLabel("Total duartion (sec):")
         self.duration_text = QLineEdit(str(self.task_params_dict["duration"]))
         self.duration_text.setValidator(QIntValidator())
@@ -163,18 +172,35 @@ class MySettingsWidget(QMainWindow):
             self.task_params_dict["session"] = self.session_id_text.text()
             try:
                 self.task_params_dict["target_temp"] = float(self.temperature_text.text())
+                if self.task_params_dict["target_temp"] > MAX_TEMP or self.task_params_dict["target_temp"] < MIN_TEMP:
+                    msg = "Max temperature is "+str(MAX_TEMP)+" and min temperature is "+str(MIN_TEMP)
+                    self.show_info_dialog(msg)
+                    return
             except:
                 self.show_info_dialog("Wrong temperature")
                 return
             try:
                 self.task_params_dict["baseline_temp"] = float(self.temperature_base_text.text())
+                if self.task_params_dict["baseline_temp"] > MAX_TEMP or self.task_params_dict["baseline_temp"] < MIN_TEMP:
+                    msg = "Max temperature is "+str(MAX_TEMP)+" and min temperature is "+str(MIN_TEMP)
+                    self.show_info_dialog(msg)
+                    return
             except:
                 self.show_info_dialog("Wrong temperature")
                 return
             try:
-                duration = int(self.duration_text.text())
-                if duration <= (TIME2APPLY_SEC+MAX_INTERVAL+1):
-                    msg = "Total duration has to be at least "+ str(TIME2APPLY_SEC+MAX_INTERVAL+1)+" sec."
+                self.task_params_dict['time2apply'] = abs(float(self.time2apply_text.text()))
+                if self.task_params_dict["time2apply"] > MAX_TIME2APPLY or self.task_params_dict["time2apply"] < MIN_TIME2APPLY:
+                    msg = "Max time to apply is "+str(MAX_TIME2APPLY)+" and min time to apply is "+str(MIN_TIME2APPLY)
+                    self.show_info_dialog(msg)
+                    return
+            except:
+                self.show_info_dialog("Wrong time to hold")
+                return
+            try:
+                duration = abs(int(self.duration_text.text()))
+                if duration <= (self.task_params_dict["time2apply"]+MAX_INTERVAL+1):
+                    msg = "Total duration has to be at least "+ str(self.task_params_dict["time2apply"]+MAX_INTERVAL+1)+" sec."
                     self.show_info_dialog(msg)
                     return
                 else:
@@ -250,7 +276,7 @@ class MySettingsWidget(QMainWindow):
                 self.qst.set_temperatures(temps)
                 self.qst.stimulate()
                 # log temperatures
-                recordDuration =TIME2APPLY_SEC+0.25
+                recordDuration =self.task_params_dict["time2apply"]+0.25
                 cpt = 0
                 start_time = time.time()
                 column_names = ["temp_1", "temp_2", "temp_3", "temp_4", "temp_5"]
@@ -340,7 +366,9 @@ class MySettingsWidget(QMainWindow):
             self.qst_connected = True
             # send constant settings for the stimuli
             self.qst.set_baseline(self.task_params_dict["baseline_temp"])
-            self.qst.set_durations(DURATIONS)
+            # set durations to user defined
+            durations = [self.task_params_dict["time2apply"]]*5
+            self.qst.set_durations(durations)
             self.qst.set_ramp_speed(RAMP_SPEED)
             self.qst.set_return_speed(RETURN_SPEED)
         except:
