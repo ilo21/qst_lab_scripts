@@ -1,5 +1,6 @@
 # qst_lab_scripts
-Python scripts used to control [QST.lab Thermal Cutaneous Stimulator](https://www.qst-lab.eu/)<br><br><br>
+Python scripts used to control [QST.lab Thermal Cutaneous Stimulator](https://www.qst-lab.eu/)<br><br>
+[thermal_stimuli.py](https://github.com/ilo21/qst_lab_scripts/blob/main/src/thermal_stimuli.py) script interacts also with [Neurospec: MMBT-S Trigger Interface Box](https://shop.neurospec.com/mmbt-s-trigger-interface-box)<br><br>
 The example of user interface:<br><br>
 ![threshold](https://github.com/ilo21/qst_lab_scripts/assets/87764674/6f1ce9ec-f0ea-4181-9be8-7e9db824644e)
 <br>
